@@ -170,8 +170,8 @@ def spotify_api_request(
             return {"error": error_data.get("error", {}).get("message", f"API error: {response.status_code}")}
         
         return response.json() if response.content else {"success": True}
-    except requests.RequestException as e:
-        return {"error": f"Request failed: {str(e)}"}
+    except requests.RequestException:
+        return {"error": "Request failed"}
 
 
 def search_tracks(uid: str, query: str, limit: int = 5) -> List[SpotifyTrack]:
@@ -199,6 +199,14 @@ def search_tracks(uid: str, query: str, limit: int = 5) -> List[SpotifyTrack]:
     return tracks
 
 
+def playlist_owner_label(owner: Dict[str, Any]) -> str:
+    """Spotify may omit owner display_name; SpotifyPlaylist.owner requires a string."""
+    display_name = owner.get("display_name")
+    if display_name is not None:
+        return display_name
+    return owner["id"]
+
+
 def get_user_playlists(uid: str, limit: int = 20) -> List[SpotifyPlaylist]:
     """Get user's playlists."""
     result = spotify_api_request(
@@ -215,7 +223,7 @@ def get_user_playlists(uid: str, limit: int = 20) -> List[SpotifyPlaylist]:
             id=item["id"],
             name=item["name"],
             description=item.get("description", ""),
-            owner=item["owner"]["display_name"],
+            owner=playlist_owner_label(item["owner"]),
             tracks_total=item["tracks"]["total"],
             public=item.get("public", False),
             uri=item["uri"],
@@ -421,8 +429,8 @@ async def tool_search_songs(request: Request):
         
         return ChatToolResponse(result=f"🎵 Found {len(tracks)} songs:\n\n" + "\n".join(results))
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Search failed: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Search failed")
 
 
 @app.post("/tools/add_to_playlist", tags=["chat_tools"], response_model=ChatToolResponse)
@@ -514,8 +522,8 @@ async def tool_add_to_playlist(request: Request):
             result=f"✅ Added **{track.name}** by {artists} to playlist **{target_playlist.name}**!"
         )
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Failed to add song: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Failed to add song")
 
 
 @app.post("/tools/create_playlist", tags=["chat_tools"], response_model=ChatToolResponse)
@@ -567,8 +575,8 @@ async def tool_create_playlist(request: Request):
             result=f"✅ Created playlist **{name}**!\n\nOpen in Spotify: {playlist_url}"
         )
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Failed to create playlist: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Failed to create playlist")
 
 
 @app.post("/tools/get_playlists", tags=["chat_tools"], response_model=ChatToolResponse)
@@ -602,8 +610,8 @@ async def tool_get_playlists(request: Request):
         
         return ChatToolResponse(result=f"📋 Your playlists:\n\n" + "\n".join(results))
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Failed to get playlists: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Failed to get playlists")
 
 
 @app.post("/tools/get_now_playing", tags=["chat_tools"], response_model=ChatToolResponse)
@@ -649,8 +657,8 @@ async def tool_get_now_playing(request: Request):
                    f"Progress: {progress} / {duration}"
         )
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Failed to get current playback: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Failed to get current playback")
 
 
 @app.post("/tools/control_playback", tags=["chat_tools"], response_model=ChatToolResponse)
@@ -701,8 +709,8 @@ async def tool_control_playback(request: Request):
         
         return ChatToolResponse(result=action_messages[action])
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Playback control failed: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Playback control failed")
 
 
 @app.post("/tools/play_song", tags=["chat_tools"], response_model=ChatToolResponse)
@@ -758,8 +766,8 @@ async def tool_play_song(request: Request):
             result=f"▶️ Now playing: **{track.name}** by {artists}"
         )
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Failed to play song: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Failed to play song")
 
 
 @app.post("/tools/get_recommendations", tags=["chat_tools"], response_model=ChatToolResponse)
@@ -814,8 +822,8 @@ async def tool_get_recommendations(request: Request):
         
         return ChatToolResponse(result=f"🎧 Recommended songs for you:\n\n" + "\n".join(results))
     
-    except Exception as e:
-        return ChatToolResponse(error=f"Failed to get recommendations: {str(e)}")
+    except Exception:
+        return ChatToolResponse(error="Failed to get recommendations")
 
 
 # ============================================
@@ -1004,4 +1012,3 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
-
